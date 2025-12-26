@@ -1,4 +1,4 @@
-import { getMimeType, getDocumentType, escapeXML, fileToBase64, performOCR } from "./app.js";
+import { getMimeType, getDocumentType, escapeXML, fileToBase64, performOCR, inlineTableContent, combineMarkdown, convertLatexToSvg } from "./app.js";
 
 // Test utilities
 const assert = (condition, message) => {
@@ -56,6 +56,77 @@ async function testFileToBase64() {
   assert(base64 === "SGVsbG8sIFdvcmxkIQ==", "Encodes text to base64");
 }
 
+function testInlineTableContent() {
+  // Test basic table inlining
+  const markdown = "# Title\n\n[tbl-0.md](tbl-0.md)\n\nMore text";
+  const tables = [{ id: "tbl-0.md", content: "| A | B |\n| --- | --- |\n| 1 | 2 |" }];
+  const result = inlineTableContent(markdown, tables);
+  assert(result.includes("| A | B |"), "Table content should be inlined");
+  assert(!result.includes("[tbl-0.md](tbl-0.md)"), "Placeholder should be removed");
+
+  // Test multiple tables
+  const markdown2 = "[tbl-0.md](tbl-0.md)\n[tbl-1.md](tbl-1.md)";
+  const tables2 = [
+    { id: "tbl-0.md", content: "Table 0" },
+    { id: "tbl-1.md", content: "Table 1" }
+  ];
+  const result2 = inlineTableContent(markdown2, tables2);
+  assert(result2.includes("Table 0"), "First table inlined");
+  assert(result2.includes("Table 1"), "Second table inlined");
+
+  // Test empty/null inputs
+  assert(inlineTableContent("", []) === "", "Empty markdown returns empty");
+  assert(inlineTableContent("text", null) === "text", "Null tables returns original");
+  assert(inlineTableContent(null, []) === null, "Null markdown returns null");
+}
+
+function testCombineMarkdownWithTables() {
+  // Simulate OCR result structure similar to sample.json
+  const ocrResult = {
+    pages: [
+      {
+        index: 0,
+        markdown: "# Page 1\n\n[tbl-0.md](tbl-0.md)",
+        tables: [{ id: "tbl-0.md", content: "| Col1 | Col2 |\n| --- | --- |\n| A | B |" }]
+      },
+      {
+        index: 1,
+        markdown: "# Page 2\n\nNo tables here"
+      }
+    ]
+  };
+
+  const combined = combineMarkdown(ocrResult);
+  assert(combined.includes("| Col1 | Col2 |"), "Table content should be in combined output");
+  assert(!combined.includes("[tbl-0.md](tbl-0.md)"), "Table placeholder should be replaced");
+  assert(combined.includes("# Page 1"), "Page 1 content present");
+  assert(combined.includes("# Page 2"), "Page 2 content present");
+  assert(combined.includes("---"), "Page separator present");
+}
+
+async function testLatexRendering() {
+  // Wait for MathJax to be fully ready
+  if (typeof MathJax !== 'undefined' && MathJax.startup?.promise) {
+    await MathJax.startup.promise;
+  }
+
+  // Test formulas from content.md
+  const testCases = [
+    // [latex, minExpectedWidth] - width in ex units
+    ['f', 1],  // Simple letter
+    ['f_{1},f_{2},\\ldots,f_{n}', 10],  // Uses \ldots
+    ['f=a_{1}f_{1}+a_{2}f_{2}+\\cdots+a_{n}f_{n}.', 20],  // Uses \cdots
+    ['E=\\int_{V}(f)^{2}dV', 10],  // Uses \int
+  ];
+
+  for (const [latex, minWidth] of testCases) {
+    const svg = convertLatexToSvg(latex, false);
+    const widthMatch = svg.match(/width="([0-9.]+)ex"/);
+    const width = widthMatch ? parseFloat(widthMatch[1]) : 0;
+    assert(width >= minWidth, `Formula "${latex}" width ${width}ex < expected ${minWidth}ex`);
+  }
+}
+
 // Integration tests (test actual UI state)
 const waitFor = (selector, timeout = 5000) => new Promise((resolve, reject) => {
   const el = document.querySelector(selector);
@@ -79,11 +150,11 @@ async function testOcrWithLocalPdf() {
   assert(apiKey, "MISTRAL_API_KEY is set");
 
   // Fetch local PDF and convert to File-like object
-  console.log("Fetching docs/neuron-small.pdf...");
-  const response = await fetch("/docs/neuron-small.pdf");
+  console.log("Fetching docs/sample.pdf...");
+  const response = await fetch("/docs/sample.pdf");
   assert(response.ok, `Failed to fetch PDF: ${response.status}`);
   const blob = await response.blob();
-  const file = new File([blob], "neuron-small.pdf", { type: "application/pdf" });
+  const file = new File([blob], "sample.pdf", { type: "application/pdf" });
 
   console.log("Calling performOCR with local PDF file...");
   try {
@@ -103,11 +174,11 @@ async function testFileUploadOcrFlow() {
   assert(apiKey, "MISTRAL_API_KEY is set");
 
   // Fetch local PDF
-  console.log("Fetching docs/neuron-small.pdf for upload test...");
+  console.log("Fetching docs/sample.pdf for upload test...");
   const response = await fetch("/docs/sample.pdf");
   assert(response.ok, `Failed to fetch PDF: ${response.status}`);
   const blob = await response.blob();
-  const file = new File([blob], "neuron-small.pdf", { type: "application/pdf" });
+  const file = new File([blob], "sample.pdf", { type: "application/pdf" });
 
   // Use DataTransfer to create a FileList and set on input
   const dataTransfer = new DataTransfer();
@@ -136,6 +207,9 @@ const allTests = [
   testGetDocumentType,
   testEscapeXML,
   testFileToBase64,
+  testInlineTableContent,
+  testCombineMarkdownWithTables,
+  testLatexRendering,
   testApiKeyLoadedFromLocalStorage,
   testOcrWithLocalPdf,
   testFileUploadOcrFlow,
