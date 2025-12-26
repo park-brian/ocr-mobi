@@ -567,11 +567,6 @@ function App() {
         <//>
       </div>
 
-      <footer class="mt-4 pt-4 border-top text-center">
-        <small class="text-muted">
-          Powered by <a href="https://docs.mistral.ai/capabilities/vision/#extracting-structured-data-with-ocr" target="_blank" rel="noopener">Mistral OCR</a>
-        </small>
-      </footer>
     </div>
   `;
 }
