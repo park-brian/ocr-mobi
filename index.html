@@ -30,11 +30,19 @@
           "solid-js/html": "https://cdn.jsdelivr.net/npm/solid-js@1/html/dist/html.min.js",
           "solid-js/store": "https://cdn.jsdelivr.net/npm/solid-js@1/store/dist/store.min.js",
           "solid-js/web": "https://cdn.jsdelivr.net/npm/solid-js@1/web/dist/web.min.js",
-          "jszip": "https://esm.sh/jszip@3",
+          "jszip": "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm",
           "marked": "https://cdn.jsdelivr.net/npm/marked@17/lib/marked.esm.js"
         }
       }
     </script>
+    <script>
+      MathJax = {
+        tex: { packages: {'[+]': ['ams']} },
+        svg: { fontCache: 'none' },
+        startup: { typeset: false }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" defer></script>
   </head>
   <body class="vh-100 bg-light d-flex flex-column">
     <div id="app" class="h-100"></div>
