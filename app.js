@@ -444,7 +444,7 @@ export async function generateEPUB(markdown, images, title = "Document") {
     <dc:identifier id="BookId">urn:uuid:${uuid}</dc:identifier>
     <dc:title>${escapedTitle}</dc:title>
     <dc:language>en</dc:language>
-    <dc:creator>OCR MOBI</dc:creator>
+    <dc:creator>OCR EPUB</dc:creator>
     <meta property="dcterms:modified">${timestamp}</meta>
   </metadata>
   <manifest>
@@ -811,7 +811,7 @@ function App() {
   return html`
     <div class="container py-4" style="max-width: 600px;">
       <header class="mb-4 text-center">
-        <h1 class="h3">OCR MOBI</h1>
+        <h1 class="h3">OCR EPUB</h1>
         <p class="text-muted">Extract text from documents using Mistral OCR</p>
       </header>
 
